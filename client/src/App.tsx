@@ -6,12 +6,14 @@ import ClaimButton from './components/ClaimButton';
 import Leaderboard from './components/Leaderboard';
 import ClaimHistory from './components/ClaimHistory';
 import { userApi } from './api/userApi';
+import { CheckCircle, AlertTriangle } from 'lucide-react';
 
 function App() {
   const [users, setUsers] = useState<{ name: string; userId: string }[]>([]);
   const [leaderboard, setLeaderboard] = useState([]);
   const [selectedUserId, setSelectedUserId] = useState('');
   const [message, setMessage] = useState('');
+  const [isError, setIsError] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -56,8 +58,10 @@ function App() {
           userId: user.userId,
         }))
       );
-    } catch (error) {
+    } catch {
       setMessage('Failed to load leaderboard');
+      setIsError(true);
+      autoClearMessage();
     } finally {
       setLoading(false);
     }
@@ -67,17 +71,27 @@ function App() {
     fetchLeaderboard();
   }, []);
 
+  const autoClearMessage = () => {
+    setTimeout(() => {
+      setMessage('');
+      setIsError(false);
+    }, 3000);
+  };
+
   const handleClaim = async () => {
     if (!selectedUserId) return;
     setLoading(true);
     try {
       const result = await userApi.claimPoints(selectedUserId);
       setMessage(`${result.user.name} got ${result.history.points} points!`);
+      setIsError(false);
       await fetchLeaderboard(currentPage);
       await fetchCurrentUser();
-      setTimeout(() => setMessage(''), 3000);
+      autoClearMessage();
     } catch {
       setMessage('Error claiming points.');
+      setIsError(true);
+      autoClearMessage();
     } finally {
       setLoading(false);
     }
@@ -107,7 +121,11 @@ function App() {
       </div>
 
       {message && (
-        <div className="text-sm mb-4 px-4 py-2 bg-gray-700 text-green-300 rounded shadow text-center">
+        <div
+          className={`flex items-center gap-2 text-sm mb-4 px-4 py-2 rounded shadow text-center justify-center ${isError ? 'bg-red-600 text-white' : 'bg-gray-700 text-green-300'
+            }`}
+        >
+          {isError ? <AlertTriangle size={18} /> : <CheckCircle size={18} />}
           {message}
         </div>
       )}
